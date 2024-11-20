@@ -19,6 +19,7 @@
 
 #define BUF 1024
 #define PORT 6543
+#define LEN 6
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -380,7 +381,7 @@ void readMessage(char* buffer,path directorypath,vector<string> index, int* curr
    }
    catch (const invalid_argument& except)
    {
-      if (send(*current_socket, "ERR", 3, 0) == -1)
+      if (send(*current_socket, "ERR", 4, 0) == -1)
       {
          perror("send answer failed");
       }
@@ -441,7 +442,7 @@ void deleteMessage(char* buffer, path directorypath,vector<string> index, int* c
    }
    catch (const invalid_argument& except)
    {
-      if (send(*current_socket, "ERR", 3, 0) == -1)
+      if (send(*current_socket, "ERR", 4, 0) == -1)
       {
          perror("send answer failed");
       }
@@ -472,7 +473,7 @@ void *clientCommunication(void *data)
    char buffer[BUF];
    int *current_socket = (int *)data;
    int isQuit;
-   char commands[4][5] = {"send", "list", "read", "del"};
+   char commands[LEN][LEN] = {"quit","send", "list", "read", "del", "login"};
 
    ////////////////////////////////////////////////////////////////////////////
    // SEND welcome message
@@ -485,7 +486,7 @@ void *clientCommunication(void *data)
 
    do
    {
-      int isValid = 1;
+      int isValid = 0;
       int command = -1;
       try
       {
@@ -504,18 +505,18 @@ void *clientCommunication(void *data)
       {
          str[i] = tolower(str[i]);
       }
-      isQuit = strcmp(str, "quit") == 0;
+      isQuit = strcmp(str, commands[0]) == 0;
       if(!isQuit)
       {
-         for(int i = 0; i < 4; i++)
+         for(int i = 1; i < LEN; i++)
          {
-            if(isValid != 0)
+            if(isValid != 1)
             {
-               isValid = strcmp(str, commands[i]);
+               isValid = strcmp(str, commands[i]) == 0;
                command = i;
             }
          }
-         if(isValid == 0)
+         if(isValid)
          {
             string user = "test";
             path directorypath;
@@ -540,29 +541,35 @@ void *clientCommunication(void *data)
                   cout << dir_entry.path().filename();
                }
             }
-           if(command == 0)
-           {
+            switch (command)
+            {
+            case 1:
                sendMessage(buffer,directorypath,index,user,current_socket);
-           }
-           else if(command == 1)
-           {
+               break;
+            case 2:
                listMessages(buffer,directorypath,index,user,current_socket);
-           }
-           else if(command == 2)
-           {
+               break;
+            case 3:
                readMessage(buffer,directorypath,index,current_socket);
-           }
-           else if(command == 3)
-           {
+               break;
+            case 4:
                deleteMessage(buffer,directorypath,index,current_socket);
-           }
+               break;
+            case 5:
+               if (send(*current_socket, "OK", 3, 0) == -1)
+               {
+                  perror("send answer failed");
+                  return NULL;
+               }
+               break;
+            }
          }
          else
          {
             if (send(*current_socket, "ERR", 4, 0) == -1)
             {
                perror("send answer failed");
-               return NULL;
+               break;
             }
          }
       }

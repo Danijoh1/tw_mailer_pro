@@ -235,7 +235,7 @@ int main(int argc, char **argv)
                   {
                      buffer[size] = '\0';
                      printf("<< %s\n", buffer); // ignore error
-                     if (strcmp("OK", buffer) != 0)
+                     if (strcmp("OK", buffer) != 0 && strcmp("ERR", buffer) != 0 && command != 2)
                      {
                         throw invalid_argument("<< Server error occured, abort");
                      }
@@ -253,7 +253,7 @@ int main(int argc, char **argv)
             switch(command)
             {
                case 0:
-                     break;
+                  break;
                case 1:
                   cerr << "Unauthorised Command - Only authenticated can use this - Login in to authenicate" << endl;
                   break;
