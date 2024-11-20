@@ -247,14 +247,21 @@ void *clientCommunication(void *data)
          cerr << except.what() << endl;
          break;
       }
-      isQuit = strcmp(buffer, "quit") == 0;
+      char str[1024] = "";
+      strcpy(str, buffer);
+      int len =strlen(str);
+      for(int i = 0; i < len; i++)
+      {
+         str[i] = tolower(str[i]);
+      }
+      isQuit = strcmp(str, "quit") == 0;
       if(!isQuit)
       {
          for(int i = 0; i < 4; i++)
          {
             if(isValid != 0)
             {
-               isValid = strcmp(buffer, commands[i]);
+               isValid = strcmp(str, commands[i]);
                command = i;
             }
          }
