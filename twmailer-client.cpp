@@ -255,16 +255,16 @@ int main(int argc, char **argv)
                case 0:
                   break;
                case 1:
-                  cerr << "Unauthorised Command - Only authenticated can use this - Login in to authenicate" << endl;
+                  cerr << "Unauthorised Command - Only authenticated Users can use this - Login in to authenicate" << endl;
                   break;
                case 2:
-                  cerr << "Unauthorised Command - Only authenticated can use this - Login in to authenicate" << endl;
+                  cerr << "Unauthorised Command - Only authenticated Users can use this - Login in to authenicate" << endl;
                   break;
                case 3:
-                  cerr << "Unauthorised Command - Only authenticated can use this - Login in to authenicate" << endl;
+                  cerr << "Unauthorised Command - Only authenticated Users can use this - Login in to authenicate" << endl;
                   break;
                case 4:
-                  cerr << "Unauthorised Command - Only authenticated can use this - Login in to authenicate" << endl;
+                  cerr << "Unauthorised Command - Only authenticated Users can use this - Login in to authenicate" << endl;
                   break;
                case 5:
                      cerr << "Already logged in" << endl;
