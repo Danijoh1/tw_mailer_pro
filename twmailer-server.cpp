@@ -14,7 +14,7 @@
 #include <fstream> 
 #include <iostream>
 #include <vector>
-#include "twmailer-idap.h"
+#include <ldap.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -34,6 +34,23 @@ int create_socket = -1;
 int new_socket = -1;
 string spoolDirectoryPath = "";
 
+/*
+////////////////////////////////////////////////////////////////////////////
+// LDAP config
+// anonymous bind with user and pw empty
+const char *ldapUri = "ldap://ldap.technikum-wien.at:389";
+const int ldapVersion = LDAP_VERSION3;
+
+// search settings
+const char *ldapSearchBaseDomainComponent = "dc=technikum-wien,dc=at";
+const char *ldapSearchFilter = "(uid=if23b00*)";
+ber_int_t ldapSearchScope = LDAP_SCOPE_SUBTREE;
+const char *ldapSearchResultAttributes[] = {"uid", "cn", NULL};
+
+int Connect();
+void readUser(char* username);
+void readPassword(char* password);
+*/
 ///////////////////////////////////////////////////////////////////////////////
 
 char* receive(char* buffer, int *current_socket);
@@ -43,6 +60,7 @@ void readMessage(char* buffer,path directorypath,vector<string> index, int* curr
 void deleteMessage(char* buffer, path directorypath,vector<string> index, int* current_socket);
 void *clientCommunication(void *data);
 void signalHandler(int sig);
+void loginMessage(char* buffer, int* current_socket);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -594,11 +612,7 @@ void *clientCommunication(void *data)
                deleteMessage(buffer,directorypath,index,current_socket);
                break;
             case 5:
-               if (send(*current_socket, "OK", 3, 0) == -1)
-               {
-                  perror("send answer failed");
-                  return NULL;
-               }
+               loginMessage(buffer,current_socket);
                break;
             }
          }
@@ -672,3 +686,112 @@ void signalHandler(int sig)
       exit(sig);
    }
 }
+
+void loginMessage(char* buffer, int* current_socket)
+{
+   /*try
+   {
+      int connect = Connect();
+      if(connect == 0);
+   }
+   catch (const invalid_argument& except)
+   {
+      cerr << except.what() << endl;
+   }*/
+   try
+   {
+      strcpy(buffer,receive(buffer, current_socket));
+      printf("Content received: %s\n", buffer); // ignore error
+   }
+   catch (const invalid_argument& except)
+   {
+      cerr << except.what() << endl;
+   }
+   //readUser(buffer);
+   try
+   {
+      strcpy(buffer,receive(buffer, current_socket));
+      printf("Content received: %s\n", buffer); // ignore error
+   }
+   catch (const invalid_argument& except)
+   {
+      cerr << except.what() << endl;
+   }
+   //readPassword(buffer);
+   if (send(*current_socket, "OK", 3, 0) == -1)
+   {
+      perror("send answer failed");
+   }
+
+}
+/*
+int Connect()
+{
+   // general
+   int rc = 0; // return code
+
+   ////////////////////////////////////////////////////////////////////////////
+   // setup LDAP connection
+   // https://linux.die.net/man/3/ldap_initialize
+   LDAP *ldapHandle;
+   rc = ldap_initialize(&ldapHandle, ldapUri);
+   if (rc != LDAP_SUCCESS)
+   {
+      fprintf(stderr, "ldap_init failed\n");
+      throw invalid_argument("send error");
+   }
+   printf("connected to LDAP server %s\n", ldapUri);
+   return rc;
+}
+
+void readUser(char* username)
+{
+   // read username (bash: export ldapuser=<yourUsername>)
+   char ldapBindUser[256];
+   char rawLdapUser[128];
+   if (strcmp(username,"") != 0)
+   {
+      strcpy(rawLdapUser, username);
+      sprintf(ldapBindUser, "uid=%s,ou=people,dc=technikum-wien,dc=at", rawLdapUser);
+      printf("user set to: %s\n", ldapBindUser);
+   }
+   else
+   {
+      const char *rawLdapUserEnv = getenv("ldapuser");
+      if (rawLdapUserEnv == NULL)
+      {
+         printf("(user not found... set to empty string)\n");
+         strcpy(ldapBindUser, "");
+      }
+      else
+      {
+         sprintf(ldapBindUser, "uid=%s,ou=people,dc=technikum-wien,dc=at", rawLdapUserEnv);
+         printf("user based on environment variable ldapuser set to: %s\n", ldapBindUser);
+      }
+   }
+}
+void readPassword(char* password)
+{
+   // read password (bash: export ldappw=<yourPW>)
+   char ldapBindPassword[256];
+   if (strcmp(password, "") != 0)
+   {
+      strcpy(ldapBindPassword, password);
+      printf("pw taken over from commandline\n");
+   }
+   else
+   {
+      const char *ldapBindPasswordEnv = getenv("ldappw");
+      if (ldapBindPasswordEnv == NULL)
+      {
+         strcpy(ldapBindPassword, "");
+         printf("(pw not found... set to empty string)\n");
+      }
+      else
+      {
+         strcpy(ldapBindPassword, ldapBindPasswordEnv);
+         printf("pw taken over from environment variable ldappw\n");
+      }
+   }
+}
+*/
