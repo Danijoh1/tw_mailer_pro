@@ -230,7 +230,263 @@ char* receive(char* buffer, int *current_socket)
       buffer[size] = '\0';
    return buffer;
 }
-
+void sendMessage(char* buffer,path directorypath,path indexpath,string user, int* current_socket)
+{
+   string receiver;
+   string subject;
+   vector<string> messagetext;
+   path filepath;
+   try
+   {
+      strcpy(buffer,receive(buffer, current_socket));
+      printf("Content received: %s\n", buffer); // ignore error
+   }
+   catch (const invalid_argument& except)
+   {
+      cerr << except.what() << endl;
+   }
+   receiver = buffer;
+   try
+   {
+      strncpy(buffer,receive(buffer, current_socket),81);
+      printf("Content received: %s\n", buffer); // ignore error
+   }
+   catch (const invalid_argument& except)
+   {
+      cerr << except.what() << endl;
+   }
+   subject = buffer;
+   while(strcmp(buffer, ".") != 0 &&  strlen(buffer) != 1) 
+   {
+      try
+      {
+         strcpy(buffer,receive(buffer, current_socket));
+         printf("Content received: %s\n", buffer); // ignore error
+      }
+      catch (const invalid_argument& except)
+      {
+         cerr << except.what() << endl;
+      }
+      if(strlen(buffer) != 0)
+      {
+         messagetext.push_back(buffer);
+      }
+   }
+   time_t timer;
+   time(&timer);
+   string filename = user+to_string(timer)+".txt";
+   fstream index(indexpath);
+   vector<string> text;
+   try
+   {
+      if (index.is_open()) 
+      { 
+         string temp;
+         do 
+         {
+            text.push_back(temp);
+         }
+         while (getline (index, temp));
+         
+         for(long unsigned int i = 0; i != text.size();i++)
+         {
+            index << text[i] << endl;
+         }
+         index << filename << endl;
+         index.close();
+         cout << "File modified: " << indexpath << endl;
+      }
+   }
+   catch (...)
+   {
+      cout << "failed to modify index" << endl;
+   }
+   filepath = directorypath/filename;
+   ofstream file(filepath);
+   try
+   {
+      if (file.is_open()) 
+      { 
+         // Write data to the file 
+         file << receiver << endl;
+         file << subject << endl;
+         for(long unsigned int i = 0; i != messagetext.size(); i++)
+         {
+            file << messagetext[i] << endl;
+         }
+         file.close(); 
+         cout << "File created: " << filepath << endl; 
+      }
+   }
+   catch (...)
+   {
+      cerr << "failed to create file" << endl;
+   }
+   if (send(*current_socket, "OK", 3, 0) == -1)
+   {
+      perror("send answer failed");
+   }
+}
+void listMessages(char* buffer,path directorypath,path indexpath,string user, int* current_socket)
+{
+   try
+   {
+      strcpy(buffer,receive(buffer, current_socket));
+      printf("Content received: %s\n", buffer); // ignore error
+   }
+   catch (const invalid_argument& except)
+   {
+      cerr << except.what() << endl;
+   }
+   int directoryMessagescount = 0;
+   vector<string> messages;
+   for (const auto & entry : std::filesystem::directory_iterator(directorypath))
+   {
+      if(entry.path() != indexpath)
+      {
+      string subject;
+      ifstream message(entry.path());
+      int counter = 0;
+      while (getline (message, subject)) 
+      {
+         if(counter == 1)
+         {
+            messages.push_back(subject);
+            break;
+         }
+         counter++;
+      }
+      }
+   }
+   cout << directoryMessagescount << endl;
+   if(directoryMessagescount != 0)
+   {
+      for(int i = 0; i != directoryMessagescount;i++)
+      {
+         cout << messages[i] << endl;
+      }
+      messages.clear();
+   }
+   if (send(*current_socket, "OK", 3, 0) == -1)
+   {
+      perror("send answer failed");
+   }
+}
+void readMessage(char* buffer,path directorypath,path indexpath, int* current_socket)
+{
+   string messageNumber;
+   int messNum = 0;
+   try
+   {
+      strcpy(buffer,receive(buffer, current_socket));
+      messageNumber = buffer;
+      printf("Content received: %s\n", buffer); // ignore error
+   }
+   catch (const invalid_argument& except)
+   {
+      cerr << except.what() << endl;
+   }
+   try
+   {
+      int temp = stoi(messageNumber);
+      messNum += temp;
+   }
+   catch(...)
+   {
+      cerr << "ERR" << endl;
+   }
+   ifstream index(indexpath);
+   int counter = 0;
+   string filename;
+   do 
+   {
+      if(counter == messNum)
+      {
+         string text;
+         ifstream message(directorypath/filename);
+         while (getline (message, text)) 
+         {
+            cout << text;
+         }
+         break;
+      }
+      counter++;
+   }while (getline (index, filename));
+   if (send(*current_socket, "OK", 3, 0) == -1)
+   {
+      perror("send answer failed");
+   }
+}
+void deleteMessage(char* buffer, path directorypath,path indexpath, int* current_socket)
+{
+   string messageNumber;
+   int messNum = 0;
+   try
+   {
+      strcpy(buffer,receive(buffer, current_socket));
+      messageNumber = buffer;
+      printf("Content received: %s\n", buffer); // ignore error
+   }
+   catch (const invalid_argument& except)
+   {
+      cerr << except.what() << endl;
+   }
+   try
+   {
+      int temp = stoi(messageNumber);
+      messNum += temp;
+   }
+   catch(...)
+   {
+      cerr << "ERR" << endl;
+   }
+   fstream index(indexpath);
+   int counter = 0;
+   string filename;
+   vector<string>messages;
+   do 
+   {
+      if(counter != messNum)
+      {
+         messages.push_back(filename);
+      }
+      counter++;
+   }while (getline (index, filename));
+   remove(directorypath/filename);
+   index.open(indexpath);
+   try
+      {
+         if (index.is_open()) 
+         {
+            index << messages[0];
+            index.close();
+         }
+      }
+   catch (...)
+   {
+      cerr << "failed to open index" << endl;
+   }
+   index.open(indexpath,ios_base::out | ios_base::app);
+   try
+      {
+         if (index.is_open()) 
+         { 
+            for(long unsigned int i = 1; i != messages.size();i++)
+            {
+               index << messages[i];
+            }
+            index.close();
+         }
+      }
+   catch (...)
+   {
+      cerr << "failed to open index" << endl;
+   }
+   if (send(*current_socket, "OK", 3, 0) == -1)
+   {
+      perror("send answer failed");
+   }
+}
 void *clientCommunication(void *data)
 {
    char buffer[BUF];
@@ -342,255 +598,6 @@ void *clientCommunication(void *data)
    }
 
    return NULL;
-}
-void *sendMessage(char* buffer,path directorypath,path indexpath,string user, int* current_socket)
-{
-   string receiver;
-   string subject;
-   vector<string> messagetext;
-   path filepath;
-   try
-   {
-      strcpy(buffer,receive(buffer, current_socket));
-      printf("Content received: %s\n", buffer); // ignore error
-   }
-   catch (const invalid_argument& except)
-   {
-      cerr << except.what() << endl;
-   }
-   receiver = buffer;
-   try
-   {
-      strcpy(buffer,receive(buffer, current_socket));
-      printf("Content received: %s\n", buffer); // ignore error
-   }
-   catch (const invalid_argument& except)
-   {
-      cerr << except.what() << endl;
-   }
-   subject = buffer;
-   subject.resize(81);
-   while(strcmp(buffer, ".") != 0 &&  strlen(buffer) != 1) 
-   {
-      try
-      {
-         strcpy(buffer,receive(buffer, current_socket));
-         printf("Content received: %s\n", buffer); // ignore error
-      }
-      catch (const invalid_argument& except)
-      {
-         cerr << except.what() << endl;
-      }
-      if(strlen(buffer) != 0)
-      {
-         messagetext.push_back(buffer);
-      }
-   }
-   time_t timer;
-   time(&timer);
-   string filename = user+to_string(timer)+".txt";
-   fstream index(indexpath,ios_base::out | ios_base::app);
-   try
-      {
-         if (index.is_open()) 
-         { 
-            index << filename << endl;
-            index.close();
-         }
-      }
-   catch (...)
-   {
-      cerr << "failed to open index" << endl;
-   }
-   filepath = directorypath/filename;
-   ofstream file(filepath);
-   try
-   {
-      if (file.is_open()) 
-      { 
-         // Write data to the file 
-         file << receiver << endl;
-         file << subject << endl;
-         for(long unsigned int i = 0; i != messagetext.size(); i++)
-         {
-            file << messagetext[i] << endl;
-         }
-         file.close(); 
-         cout << "File modified: " << filepath << endl; 
-      }
-   }
-   catch (...)
-   {
-      cerr << "failed to create file" << endl;
-   }
-   if (send(*current_socket, "OK", 3, 0) == -1)
-   {
-      perror("send answer failed");
-      return NULL;
-   }
-}
-void *listMessages(char* buffer,path directorypath,path indexpath,string user, int* current_socket)
-{
-   try
-   {
-      strcpy(buffer,receive(buffer, current_socket));
-      printf("Content received: %s\n", buffer); // ignore error
-   }
-   catch (const invalid_argument& except)
-   {
-      cerr << except.what() << endl;
-   }
-   int directoryMessagescount = 0;
-   vector<string> messages;
-   for (const auto & entry : std::filesystem::directory_iterator(directorypath))
-   {
-      if(entry.path() != indexpath)
-      {
-      string subject;
-      ifstream message(entry.path());
-      int counter = 0;
-      while (getline (message, subject)) 
-      {
-         if(counter == 1)
-         {
-            messages.push_back(subject);
-            break;
-         }
-         counter++;
-      }
-      }
-   }
-   cout << directoryMessagescount << endl;
-   if(directoryMessagescount != 0)
-   {
-      for(int i = 0; i != directoryMessagescount;i++)
-      {
-         cout << messages[i] << endl;
-      }
-      messages.clear();
-   }
-   if (send(*current_socket, "OK", 3, 0) == -1)
-   {
-      perror("send answer failed");
-      return NULL;
-   }
-}
-void *readMessage(char* buffer,path directorypath,path indexpath, int* current_socket)
-{
-   string messageNumber;
-   int messNum = 0;
-   try
-   {
-      strcpy(buffer,receive(buffer, current_socket));
-      messageNumber = buffer;
-      printf("Content received: %s\n", buffer); // ignore error
-   }
-   catch (const invalid_argument& except)
-   {
-      cerr << except.what() << endl;
-   }
-   try
-   {
-      int temp = stoi(messageNumber);
-      messNum += temp;
-   }
-   catch(...)
-   {
-      cerr << "ERR" << endl;
-   }
-   ifstream index(indexpath);
-   int counter = 0;
-   string filename;
-   do 
-   {
-      if(counter == messNum)
-      {
-         string text;
-         ifstream message(directorypath/filename);
-         while (getline (message, text)) 
-         {
-            cout << text;
-         }
-         break;
-      }
-      counter++;
-   }while (getline (index, filename));
-   if (send(*current_socket, "OK", 3, 0) == -1)
-   {
-      perror("send answer failed");
-      return NULL;
-   }
-}
-void *deleteMessage(char* buffer, path directorypath,path indexpath, int* current_socket)
-{
-   string messageNumber;
-   int messNum = 0;
-   try
-   {
-      strcpy(buffer,receive(buffer, current_socket));
-      messageNumber = buffer;
-      printf("Content received: %s\n", buffer); // ignore error
-   }
-   catch (const invalid_argument& except)
-   {
-      cerr << except.what() << endl;
-   }
-   try
-   {
-      int temp = stoi(messageNumber);
-      messNum += temp;
-   }
-   catch(...)
-   {
-      cerr << "ERR" << endl;
-   }
-   fstream index(indexpath);
-   int counter = 0;
-   string filename;
-   vector<string>messages;
-   do 
-   {
-      if(counter != messNum)
-      {
-         messages.push_back(filename);
-      }
-      counter++;
-   }while (getline (index, filename));
-   remove(directorypath/filename);
-   index.open(indexpath);
-   try
-      {
-         if (index.is_open()) 
-         {
-            index << messages[0];
-            index.close();
-         }
-      }
-   catch (...)
-   {
-      cerr << "failed to open index" << endl;
-   }
-   index.open(indexpath,ios_base::out | ios_base::app);
-   try
-      {
-         if (index.is_open()) 
-         { 
-            for(long unsigned int i = 1; i != messages.size();i++)
-            {
-               index << messages[i];
-            }
-            index.close();
-         }
-      }
-   catch (...)
-   {
-      cerr << "failed to open index" << endl;
-   }
-   if (send(*current_socket, "OK", 3, 0) == -1)
-   {
-      perror("send answer failed");
-      return NULL;
-   }
 }
 void signalHandler(int sig)
 {
