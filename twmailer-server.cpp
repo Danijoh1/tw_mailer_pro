@@ -132,7 +132,7 @@ int main(int argc, char **argv)
       return EXIT_FAILURE;
    }
 
-   cout << "Started Server at port " << ntohs(address.sin_port) << " with " << spoolDirectory << " as the spool directory" << endl;
+   std::cout << "Started Server at port " << ntohs(address.sin_port) << " with " << spoolDirectory << " as the spool directory" << endl;
 
    ////////////////////////////////////////////////////////////////////////////
    // ALLOW CONNECTION ESTABLISHING
@@ -230,7 +230,7 @@ char* receive(char* buffer, int *current_socket)
       buffer[size] = '\0';
    return buffer;
 }
-void sendMessage(char* buffer,path directorypath,path indexpath,string user, int* current_socket)
+void sendMessage(char* buffer,path directorypath,vector<string> index,string user, int* current_socket)
 {
    string receiver;
    string subject;
@@ -275,33 +275,8 @@ void sendMessage(char* buffer,path directorypath,path indexpath,string user, int
    time_t timer;
    time(&timer);
    string filename = user+to_string(timer)+".txt";
-   fstream index(indexpath);
-   vector<string> text;
-   try
-   {
-      if (index.is_open()) 
-      { 
-         string temp;
-         do 
-         {
-            text.push_back(temp);
-         }
-         while (getline (index, temp));
-         
-         for(long unsigned int i = 0; i != text.size();i++)
-         {
-            index << text[i] << endl;
-         }
-         index << filename << endl;
-         index.close();
-         cout << "File modified: " << indexpath << endl;
-      }
-   }
-   catch (...)
-   {
-      cout << "failed to modify index" << endl;
-   }
    filepath = directorypath/filename;
+   index.push_back(filename);
    ofstream file(filepath);
    try
    {
@@ -315,7 +290,7 @@ void sendMessage(char* buffer,path directorypath,path indexpath,string user, int
             file << messagetext[i] << endl;
          }
          file.close(); 
-         cout << "File created: " << filepath << endl; 
+         std::cout << "File created: " << filepath << endl; 
       }
    }
    catch (...)
@@ -327,25 +302,14 @@ void sendMessage(char* buffer,path directorypath,path indexpath,string user, int
       perror("send answer failed");
    }
 }
-void listMessages(char* buffer,path directorypath,path indexpath,string user, int* current_socket)
+void listMessages(char* buffer,path directorypath,vector<string> index,string user, int* current_socket)
 {
-   try
-   {
-      strcpy(buffer,receive(buffer, current_socket));
-      printf("Content received: %s\n", buffer); // ignore error
-   }
-   catch (const invalid_argument& except)
-   {
-      cerr << except.what() << endl;
-   }
-   int directoryMessagescount = 0;
+   int messagecount = 0;
    vector<string> messages;
-   for (const auto & entry : std::filesystem::directory_iterator(directorypath))
+   for(long unsigned int i = 0; i != index.size();i++)
    {
-      if(entry.path() != indexpath)
-      {
       string subject;
-      ifstream message(entry.path());
+      ifstream message(directorypath/index[i]);
       int counter = 0;
       while (getline (message, subject)) 
       {
@@ -356,26 +320,30 @@ void listMessages(char* buffer,path directorypath,path indexpath,string user, in
          }
          counter++;
       }
-      }
+      messagecount++;
    }
-   cout << directoryMessagescount << endl;
-   if(directoryMessagescount != 0)
+   std::cout << messagecount << endl;
+   if (send(*current_socket, to_string(messagecount).c_str(), 3, 0) == -1)
    {
-      for(int i = 0; i != directoryMessagescount;i++)
+      perror("send answer failed");
+   }
+   if(messagecount != 0)
+   {
+      for(int i = 0; i != messagecount;i++)
       {
-         cout << messages[i] << endl;
+         std::cout << messages[i] << endl;
+         if (send(*current_socket, messages[i].c_str(), 3, 0) == -1)
+   {
+      perror("send answer failed");
+   }
       }
       messages.clear();
    }
-   if (send(*current_socket, "OK", 3, 0) == -1)
-   {
-      perror("send answer failed");
-   }
 }
-void readMessage(char* buffer,path directorypath,path indexpath, int* current_socket)
+void readMessage(char* buffer,path directorypath,vector<string> index, int* current_socket)
 {
    string messageNumber;
-   int messNum = 0;
+   long unsigned int messNum = 0;
    try
    {
       strcpy(buffer,receive(buffer, current_socket));
@@ -389,38 +357,53 @@ void readMessage(char* buffer,path directorypath,path indexpath, int* current_so
    try
    {
       int temp = stoi(messageNumber);
-      messNum += temp;
+      if(temp >= 0)
+      {
+         messNum += temp;
+      }
+      else
+      {
+         throw(std::invalid_argument(" "));
+      }
    }
    catch(...)
    {
       cerr << "ERR" << endl;
    }
-   ifstream index(indexpath);
-   int counter = 0;
-   string filename;
-   do 
+   try
    {
-      if(counter == messNum)
+      if(messNum > index.size())
       {
-         string text;
-         ifstream message(directorypath/filename);
-         while (getline (message, text)) 
-         {
-            cout << text;
-         }
-         break;
+         throw(std::invalid_argument(" "));
       }
-      counter++;
-   }while (getline (index, filename));
+   }
+   catch (const invalid_argument& except)
+   {
+      if (send(*current_socket, "ERR", 3, 0) == -1)
+      {
+         perror("send answer failed");
+      }
+   }
    if (send(*current_socket, "OK", 3, 0) == -1)
    {
       perror("send answer failed");
    }
+   string text;
+   ifstream file(directorypath/index[messNum]);
+   while (getline (file, text)) 
+   {
+      std::cout << text << endl;
+      if (send(*current_socket, text.c_str(), 3, 0) == -1)
+      {
+         perror("send answer failed");
+      }
+   }
+   
 }
-void deleteMessage(char* buffer, path directorypath,path indexpath, int* current_socket)
+void deleteMessage(char* buffer, path directorypath,vector<string> index, int* current_socket)
 {
    string messageNumber;
-   int messNum = 0;
+   long unsigned int messNum = 0;
    try
    {
       strcpy(buffer,receive(buffer, current_socket));
@@ -434,53 +417,59 @@ void deleteMessage(char* buffer, path directorypath,path indexpath, int* current
    try
    {
       int temp = stoi(messageNumber);
-      messNum += temp;
+      if(temp >= 0)
+      {
+         messNum += temp;
+      }
+      else
+      {
+         throw(std::invalid_argument(" "));
+      }
    }
    catch(...)
    {
       cerr << "ERR" << endl;
    }
-   fstream index(indexpath);
-   int counter = 0;
-   string filename;
-   vector<string>messages;
-   do 
-   {
-      if(counter != messNum)
-      {
-         messages.push_back(filename);
-      }
-      counter++;
-   }while (getline (index, filename));
-   remove(directorypath/filename);
-   index.open(indexpath);
    try
-      {
-         if (index.is_open()) 
-         {
-            index << messages[0];
-            index.close();
-         }
-      }
-   catch (...)
    {
-      cerr << "failed to open index" << endl;
+      if(messNum > index.size())
+      {
+         throw(std::invalid_argument(" "));
+      }
    }
-   index.open(indexpath,ios_base::out | ios_base::app);
-   try
+   catch (const invalid_argument& except)
+   {
+      if (send(*current_socket, "ERR", 3, 0) == -1)
       {
-         if (index.is_open()) 
-         { 
-            for(long unsigned int i = 1; i != messages.size();i++)
-            {
-               index << messages[i];
-            }
-            index.close();
+         perror("send answer failed");
+      }
+   }
+   remove(directorypath/index[messNum]);
+   index[messNum] = "X";
+   vector<string> temp;
+   int j = 0;
+   for(long unsigned int i; i != index.size();i++)
+   {
+      if(index[i] != "X")
+      {
+         if(i+j< index.size())
+         {
+         temp.push_back(index[i+j]);
          }
       }
-   catch (...)
+      else if(index[i] == "X")
+      {
+         if(i+1< index.size())
+         {
+            temp.push_back(index[i+1]);
+            j = 1;
+         } 
+      }
+   }
+   index.clear();
+   for(long unsigned int i; i != temp.size();i++)
    {
-      cerr << "failed to open index" << endl;
+      index.push_back(temp[i]);
    }
    if (send(*current_socket, "OK", 3, 0) == -1)
    {
@@ -539,37 +528,41 @@ void *clientCommunication(void *data)
          {
             string user = "test";
             path directorypath;
-            path indexpath;
+            vector<string> index;
             directorypath = spoolDirectoryPath + "/" + user;
             if (!exists(directorypath)) 
             { 
                try
                {
                   create_directory(directorypath);
-                  indexpath = directorypath /"index.txt";
-                  ofstream index(indexpath);
-                  index.close();
                }
                catch (...)
                {
                   cerr << "failed to create directory" << endl;
                }
             }
+            if(!empty(directorypath))
+            {
+               for (auto const& dir_entry : std::filesystem::recursive_directory_iterator{directorypath})
+               {
+                  index.push_back(dir_entry.path().filename());
+               }
+            }
            if(command == 0)
            {
-               sendMessage(buffer,directorypath,indexpath,user,current_socket);
+               sendMessage(buffer,directorypath,index,user,current_socket);
            }
            else if(command == 1)
            {
-               listMessages(buffer,directorypath,indexpath,user,current_socket);
+               listMessages(buffer,directorypath,index,user,current_socket);
            }
            else if(command == 2)
            {
-               readMessage(buffer,directorypath,indexpath,current_socket);
+               readMessage(buffer,directorypath,index,current_socket);
            }
            else if(command == 3)
            {
-               deleteMessage(buffer,directorypath,indexpath,current_socket);
+               deleteMessage(buffer,directorypath,index,current_socket);
            }
          }
          else
