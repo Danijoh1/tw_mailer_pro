@@ -1,7 +1,7 @@
 *:Zone.Identifier
-tw-mailer-client
-tw-mailer-server
-/mail-spool-directory
+twmailer-client
+twmailer-server
+mail-spool-directory/
 
 .vscode/*
 !.vscode/settings.json

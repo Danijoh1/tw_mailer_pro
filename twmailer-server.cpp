@@ -521,7 +521,7 @@ void *clientCommunication(void *data)
                   {
                      if (index.is_open()) 
                      { 
-                        for(int i = 1; i != messages.size();i++)
+                        for(long unsigned int i = 1; i != messages.size();i++)
                         {
                            index << messages[i];
                         }
