@@ -496,7 +496,7 @@ void *clientCommunication(void *data)
 
    ////////////////////////////////////////////////////////////////////////////
    // SEND welcome message
-   strcpy(buffer, "Welcome to myserver!\r\nPlease enter your commands...\r\n");
+   strcpy(buffer, "Welcome to twmailer!\r\nPlease enter your commands...\r\n");
    if (send(*current_socket, buffer, strlen(buffer), 0) == -1)
    {
       perror("send failed");
@@ -581,7 +581,8 @@ void *clientCommunication(void *data)
             }
          }
       }
-   }while(!isQuit && !abortRequested);
+   }
+   while(!isQuit && !abortRequested);
 
    // closes/frees the descriptor if not already
    if (*current_socket != -1)
