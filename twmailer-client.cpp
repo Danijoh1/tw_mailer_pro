@@ -31,6 +31,9 @@ void inputSend(int create_socket,char* buffer, int size);
 void inputRead(int create_socket,char* buffer, int size);
 void inputDelete(int create_socket,char* buffer, int size);
 void inputLogin(int create_socket,char* buffer, int size);
+char* receive(int create_socket, char* buffer, int size);
+void listReceive(int create_socket, char* buffer, int size);
+void readReceive(int create_socket, char* buffer, int size);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -217,26 +220,31 @@ int main(int argc, char **argv)
             {
                try 
                {
-                  size = recv(create_socket, buffer, BUF - 1, 0);
-                  if (size == -1)
+                  switch(command)
                   {
-                     throw invalid_argument("recv error");
-                  }
-                  else if (size == 0)
-                  {
-                     if(!isQuit)
-                     {
-                        throw invalid_argument("Server closed remote socket"); // ignore error
-                     }
-                  }
-                  else
-                  {
-                     buffer[size] = '\0';
-                     printf("<< %s\n", buffer); // ignore error
-                     if (strcmp("OK", buffer) != 0 && strcmp("ERR", buffer) != 0 && command != 2)
-                     {
-                        throw invalid_argument("<< Server error occured, abort");
-                     }
+                     case 0:
+                        break;
+                     case 1:
+                        strcpy(buffer, receive(create_socket, buffer, size));
+                        printf("<< %s\n", buffer); // ignore error
+                        break;
+                     case 2:
+                        listReceive(create_socket, buffer, size);
+                        break;
+                     case 3:
+                        readReceive(create_socket, buffer, size);
+                        break;
+                     case 4:
+                        strcpy(buffer, receive(create_socket, buffer, size));
+                        printf("<< %s\n", buffer); // ignore error
+                        break;
+                     case 5:
+                        strcpy(buffer, receive(create_socket, buffer, size));;
+                        printf("<< %s\n", buffer); // ignore error
+                        break;
+                     default:
+                        throw invalid_argument("Unknown Error");
+                        break;
                   }
                }
                catch (const invalid_argument& except)
@@ -334,7 +342,7 @@ void inputSend(int create_socket,char* buffer, int size)
       throw invalid_argument("send error");
    }
    cout << "Message:" << endl;
-   while(strcmp(buffer, ".") != 0 && strlen(buffer) != 1) 
+   while(strcmp(buffer, ".") != 0) 
    {
       cout << ">>";
       strcpy(buffer,input(buffer, BUF));
@@ -379,4 +387,55 @@ void inputLogin(int create_socket, char* buffer, int size)
    {
       throw invalid_argument("send error");
    }
+}
+
+char* receive(int create_socket, char* buffer, int size)
+{
+   size = recv(create_socket, buffer, BUF - 1, 0);
+   if (size == -1)
+   {
+      throw invalid_argument("recv error");
+   }
+   else if (size == 0)
+   {
+         throw invalid_argument("Server closed remote socket"); // ignore error
+   }
+   else
+   {
+      buffer[size] = '\0';
+      if (strcmp("ERR", buffer) == 0)
+      {
+         throw invalid_argument("<< Server error occured, abort");
+      }
+   }
+   return buffer;
+}
+
+void listReceive(int create_socket, char* buffer, int size)
+{
+   strcpy(buffer, receive(create_socket, buffer, size));
+   int messageCount = atoi(buffer);
+   cout << "Message Count: " << buffer << endl;
+   for(int i = 0; i < messageCount; i++)
+   {
+      strcpy(buffer, receive(create_socket, buffer, size));
+      cout << "Subject " << i+1 <<": " << buffer << endl;
+   }
+}
+void readReceive(int create_socket, char* buffer, int size)
+{
+   strcpy(buffer, receive(create_socket, buffer, size));
+   printf("<< %s\n", buffer); // ignore error
+   cout << "Sender: " << username << endl;
+   strcpy(buffer, receive(create_socket, buffer, size));
+   cout << "Receiver: " << buffer << endl;
+   strcpy(buffer, receive(create_socket, buffer, size));
+   cout << "Subject: " << buffer << endl;
+   cout << "Message:" << endl;
+   while(strcmp(buffer, ".") != 0) 
+   {
+      strcpy(buffer, receive(create_socket, buffer, size));
+      cout << "<< " << buffer << endl;
+   }
+
 }
