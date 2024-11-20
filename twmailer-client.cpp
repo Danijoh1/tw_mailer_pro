@@ -7,11 +7,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <iostream>
 
 ///////////////////////////////////////////////////////////////////////////////
 
 #define BUF 1024
 #define PORT 6543
+
+///////////////////////////////////////////////////////////////////////////////
+
+using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -63,15 +68,19 @@ int main(int argc, char **argv)
    memset(&address, 0, sizeof(address)); // init storage with 0
    address.sin_family = AF_INET;         // IPv4
    // https://man7.org/linux/man-pages/man3/htons.3.html
-   address.sin_port = htons(PORT);
+
    // https://man7.org/linux/man-pages/man3/inet_aton.3.html
-   if (argc < 2)
+   if (argc < 3)
    {
+      cerr << "Address insufficently defined - connect to default address 127.0.0.1:" << PORT << endl;
       inet_aton("127.0.0.1", &address.sin_addr);
+      address.sin_port = htons(PORT);
    }
    else
    {
       inet_aton(argv[1], &address.sin_addr);
+      address.sin_port = htons(atoi(argv[2]));
+
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -87,8 +96,8 @@ int main(int argc, char **argv)
    }
 
    // ignore return value of printf
-   printf("Connection with server (%s) established\n",
-          inet_ntoa(address.sin_addr));
+   printf("Connection with server (%s) at port (%d) established\n",
+          inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
    ////////////////////////////////////////////////////////////////////////////
    // RECEIVE DATA

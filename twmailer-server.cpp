@@ -36,10 +36,11 @@ void signalHandler(int sig);
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int main(void)
+int main(int argc, char **argv)
 {
    socklen_t addrlen;
    struct sockaddr_in address, cliaddress;
+   string mainSpoolDirectory = "";
    int reuseValue = 1;
 
    ////////////////////////////////////////////////////////////////////////////
@@ -79,7 +80,7 @@ int main(void)
       return EXIT_FAILURE;
    }
 
-   /*if (setsockopt(create_socket,
+   if (setsockopt(create_socket,
                   SOL_SOCKET,
                   SO_REUSEPORT,
                   &reuseValue,
@@ -87,7 +88,7 @@ int main(void)
    {
       perror("set socket options - reusePort");
       return EXIT_FAILURE;
-   }*/
+   }
 
    ////////////////////////////////////////////////////////////////////////////
    // INIT ADDRESS
@@ -95,7 +96,17 @@ int main(void)
    memset(&address, 0, sizeof(address));
    address.sin_family = AF_INET;
    address.sin_addr.s_addr = INADDR_ANY;
-   address.sin_port = htons(PORT);
+   if (argc < 3)
+   {
+      cerr << "Server insufficently defined - Start Server at default port " << PORT << " with mail-spool-directory as spool directory" << endl;
+      address.sin_port = htons(PORT);
+      mainSpoolDirectory = "mail-spool-directory";
+   }
+   else
+   {
+      address.sin_port = htons(atoi(argv[1]));
+      mainSpoolDirectory = argv[2];
+   }
 
    ////////////////////////////////////////////////////////////////////////////
    // ASSIGN AN ADDRESS WITH PORT TO SOCKET
@@ -104,6 +115,8 @@ int main(void)
       perror("bind error");
       return EXIT_FAILURE;
    }
+
+   cout << "Started Server at port " << ntohs(address.sin_port) << " with " << mainSpoolDirectory << " as the spool directory" << endl;
 
    ////////////////////////////////////////////////////////////////////////////
    // ALLOW CONNECTION ESTABLISHING
