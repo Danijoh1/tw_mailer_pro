@@ -37,7 +37,7 @@ string spoolDirectoryPath = "";
 
 char* receive(char* buffer, int *current_socket);
 void sendMessage(char* buffer,path directorypath,vector<string> index,string user, int* current_socket);
-void listMessages(char* buffer,path directorypath,vector<string> index,string user, int* current_socket);
+void listMessages(char* buffer,path directorypath,vector<string> index, int* current_socket);
 void readMessage(char* buffer,path directorypath,vector<string> index, int* current_socket);
 void deleteMessage(char* buffer, path directorypath,vector<string> index, int* current_socket);
 void *clientCommunication(void *data);
@@ -308,43 +308,54 @@ void sendMessage(char* buffer,path directorypath,vector<string> index,string use
       perror("send answer failed");
    }
 }
-void listMessages(char* buffer,path directorypath,vector<string> index,string user, int* current_socket)
+void listMessages(char* buffer,path directorypath,vector<string> index, int* current_socket)
 {
    int messagecount = 0;
    vector<string> messages;
-   for(long unsigned int i = 0; i != index.size();i++)
+   if(!filesystem::is_empty(directorypath))
    {
-      string subject;
-      ifstream message(directorypath/index[i]);
-      int counter = 0;
-      while (getline (message, subject)) 
+      for(long unsigned int i = 0; i != index.size();i++)
       {
-         if(counter == 1)
+         string subject;
+         ifstream message(directorypath/index[i]);
+         int counter = 0;
+         while (getline (message, subject)) 
          {
-            messages.push_back(subject);
-            break;
+            if(counter == 1)
+            {
+               messages.push_back(subject);
+               break;
+            }
+            counter++;
          }
-         counter++;
+         message.close();
+         messagecount++;
       }
-      messagecount++;
-   }
-   std::cout << messagecount << endl;
-   if (send(*current_socket, to_string(messagecount).c_str(), 3, 0) == -1)
-   {
-      perror("send answer failed");
-   }
-   if(messagecount != 0)
-   {
-      for(int i = 0; i != messagecount;i++)
+      std::cout << messagecount << endl;
+      if (send(*current_socket, to_string(messagecount).c_str(), 3, 0) == -1)
       {
-         std::cout << messages[i] << endl;
-         strcpy(buffer,messages[i].c_str());
-         if (send(*current_socket,buffer, 3, 0) == -1)
-   {
-      perror("send answer failed");
-   }
+         perror("send answer failed");
       }
-      messages.clear();
+      if(messagecount != 0)
+      {
+         for(int i = 0; i != messagecount;i++)
+         {
+            std::cout << messages[i] << endl;
+            strcpy(buffer,messages[i].c_str());
+            if (send(*current_socket,buffer, 3, 0) == -1)
+            {
+               perror("send answer failed");
+            }
+         }
+         messages.clear();
+      }
+   }
+   else
+   {
+      if (send(*current_socket, to_string(messagecount).c_str(), 3, 0) == -1)
+      {
+         perror("send answer failed");
+      }
    }
 }
 void readMessage(char* buffer,path directorypath,vector<string> index, int* current_socket)
@@ -375,102 +386,109 @@ void readMessage(char* buffer,path directorypath,vector<string> index, int* curr
    }
    catch(...)
    {
-      cerr << "ERR" << endl;
-   }
-   try
-   {
-      if(messNum > index.size())
+      if (send(*current_socket, "ERR", 4, 0) == -1)
       {
-         throw(std::invalid_argument(" "));
+         perror("send answer failed");
       }
    }
-   catch (const invalid_argument& except)
+   if(messNum <= index.size()-1)
+   {
+      if (send(*current_socket, "OK", 3, 0) == -1)
+      {
+         perror("send answer failed");
+      }
+      string text;
+      ifstream file(directorypath/index[messNum-1]);
+      while (getline (file, text)) 
+      {
+         std::cout << text << endl;
+         if (send(*current_socket,text.c_str(), 3, 0) == -1)
+         {
+            perror("send answer failed");
+         }
+      }
+      file.close();
+   }
+   else
    {
       if (send(*current_socket, "ERR", 4, 0) == -1)
       {
          perror("send answer failed");
       }
    }
-   if (send(*current_socket, "OK", 3, 0) == -1)
-   {
-      perror("send answer failed");
-   }
-   string text;
-   ifstream file(directorypath/index[messNum]);
-   while (getline (file, text)) 
-   {
-      std::cout << text << endl;
-      strcpy(buffer,text.c_str());
-      if (send(*current_socket,buffer, 3, 0) == -1)
-      {
-         perror("send answer failed");
-      }
-   }
-   
 }
 void deleteMessage(char* buffer, path directorypath,vector<string> index, int* current_socket)
 {
    string messageNumber;
    long unsigned int messNum = 0;
-   try
+   if(!filesystem::is_empty(directorypath))
    {
-      strcpy(buffer,receive(buffer, current_socket));
-      messageNumber = buffer;
-      printf("Content received: %s\n", buffer); // ignore error
-   }
-   catch (const invalid_argument& except)
-   {
-      cerr << except.what() << endl;
-   }
-   try
-   {
-      int temp = stoi(messageNumber);
-      if(temp >= 0)
+      try
       {
-         messNum = temp;
+         strcpy(buffer,receive(buffer, current_socket));
+         messageNumber = buffer;
+         printf("Content received: %s\n", buffer); // ignore error
+      }
+      catch (const invalid_argument& except)
+      {
+         cerr << except.what() << endl;
+      }
+      try
+      {
+         int temp = stoi(messageNumber);
+         if(temp >= 0)
+         {
+            messNum = temp;
+         }
+         else
+         {
+            throw(std::invalid_argument(" "));
+         }
+      }
+      catch(...)
+      {
+         if (send(*current_socket, "ERR", 4, 0) == -1)
+         {
+            perror("send answer failed");
+         }
+      }
+      if(messNum <= index.size()-1)
+      {
+         string fileToRemove = index[messNum];
+         vector<string> temp;
+         for(long unsigned int i = 0; i != index.size();i++)
+         {
+            if(i != messNum)
+            {
+               temp.push_back(index[i]);
+            }
+         }
+         index.clear();
+         index.resize(1);
+         for(long unsigned int i = 0; i != temp.size();i++)
+         {
+            index.push_back(temp[i]);
+         }
+         remove(directorypath/fileToRemove);
+         if (send(*current_socket, "OK", 3, 0) == -1)
+         {
+            perror("send answer failed");
+         }
       }
       else
       {
-         throw(std::invalid_argument(" "));
+         if (send(*current_socket, "ERR", 4, 0) == -1)
+         {
+            perror("send answer failed");
+         }
       }
    }
-   catch(...)
-   {
-      cerr << "ERR" << endl;
-   }
-   try
-   {
-      if(messNum > index.size()-1)
-      {
-         throw(std::invalid_argument(" "));
-      }
-   }
-   catch (const invalid_argument& except)
+   else
    {
       if (send(*current_socket, "ERR", 4, 0) == -1)
       {
          perror("send answer failed");
       }
-   }
-   string fileToRemove = index[messNum];
-   vector<string> temp;
-   for(long unsigned int i = 0; i != index.size()-1;i++)
-   {
-      if(i != messNum)
-      {
-         temp.push_back(index[i]);
-      }
-   }
-   index.clear();
-   index.resize(1);
-   for(long unsigned int i = 0; i != temp.size()-1;i++)
-   {
-      index.push_back(temp[i]);
-   }
-   remove(directorypath/fileToRemove);
-   if (send(*current_socket, "OK", 3, 0) == -1)
-   {
-      perror("send answer failed");
    }
 }
 void *clientCommunication(void *data)
@@ -552,7 +570,7 @@ void *clientCommunication(void *data)
                sendMessage(buffer,directorypath,index,user,current_socket);
                break;
             case 2:
-               listMessages(buffer,directorypath,index,user,current_socket);
+               listMessages(buffer,directorypath,index,current_socket);
                break;
             case 3:
                readMessage(buffer,directorypath,index,current_socket);
