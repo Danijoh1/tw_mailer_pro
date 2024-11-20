@@ -35,6 +35,11 @@ string spoolDirectoryPath = "";
 
 ///////////////////////////////////////////////////////////////////////////////
 
+char* receive(char* buffer, int *current_socket);
+void sendMessage(char* buffer,path directorypath,vector<string> index,string user, int* current_socket);
+void listMessages(char* buffer,path directorypath,vector<string> index,string user, int* current_socket);
+void readMessage(char* buffer,path directorypath,vector<string> index, int* current_socket);
+void deleteMessage(char* buffer, path directorypath,vector<string> index, int* current_socket);
 void *clientCommunication(void *data);
 void signalHandler(int sig);
 
