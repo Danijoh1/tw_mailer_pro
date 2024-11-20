@@ -238,6 +238,7 @@ char* receive(char* buffer, int *current_socket)
 }
 void sendMessage(char* buffer,path directorypath,vector<string> index,string user, int* current_socket)
 {
+   // sends Message to the server
    string receiver;
    string subject;
    vector<string> messagetext;
@@ -278,6 +279,7 @@ void sendMessage(char* buffer,path directorypath,vector<string> index,string use
          messagetext.push_back(buffer);
       }
    }
+   //We use the the current + the username to give each mail a unique name
    time_t timer;
    time(&timer);
    string filename = user+to_string(timer)+".txt";
@@ -319,6 +321,7 @@ void listMessages(char* buffer,path directorypath,vector<string> index, int* cur
          string subject;
          ifstream message(directorypath/index[i]);
          int counter = 0;
+         //We iterate through the mail taking the subject from each
          while (getline (message, subject)) 
          {
             if(counter == 1)
@@ -473,13 +476,13 @@ void deleteMessage(char* buffer, path directorypath,vector<string> index, int* c
                temp.push_back(index[i]);
             }
          }
-         index.clear();
-         index.resize(1);
+         index.clear();    //deleting contents of vector so the referenz to the deleted file can be removed
+         index.resize(1);  //resize the vector index to avoid segmentaion faults
          for(long unsigned int i = 0; i != temp.size();i++)
          {
-            index.push_back(temp[i]);
+            index.push_back(temp[i]);  //repopulating the vector with the remaining filenames
          }
-         remove(directorypath/fileToRemove);
+         remove(directorypath/fileToRemove); //deletes the targeted file
          if (send(*current_socket, "OK", 3, 0) == -1)
          {
             perror("send answer failed");
