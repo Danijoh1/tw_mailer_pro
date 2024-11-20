@@ -232,6 +232,7 @@ void *clientCommunication(void *data)
       catch (const invalid_argument& except)
       {
          cerr << except.what() << endl;
+         break;
       }
       isQuit = strcmp(buffer, "quit") == 0;
       if(!isQuit)
