@@ -28,7 +28,6 @@ string username = "test";
 
 char* input(char* buffer, int length);
 void inputSend(int create_socket,char* buffer, int size);
-void inputList(int create_socket,char* buffer, int size);
 void inputRead(int create_socket,char* buffer, int size);
 void inputDelete(int create_socket,char* buffer, int size);
 void inputLogin(int create_socket,char* buffer, int size);
@@ -182,7 +181,6 @@ int main(int argc, char **argv)
                      inputSend(create_socket, buffer, size);
                      break;
                   case 2:
-                     inputList(create_socket, buffer, size);
                      break;
                   case 3:
                      inputRead(create_socket, buffer, size);
@@ -323,11 +321,6 @@ void inputSend(int create_socket,char* buffer, int size)
 {
    cout << "Sender: ";
    cout << username << endl;
-   strcpy(buffer, username.c_str());
-   if ((send(create_socket, buffer, size + 1, 0)) == -1) 
-   {
-      throw invalid_argument("send error");
-   }
    cout << "Receiver: ";
    strcpy(buffer,input(buffer, BUF));
    if ((send(create_socket, buffer, size + 1, 0)) == -1) 
@@ -352,22 +345,8 @@ void inputSend(int create_socket,char* buffer, int size)
    }
 }
 
-void inputList(int create_socket, char* buffer, int size)
-{
-   strcpy(buffer, username.c_str());
-   if ((send(create_socket, buffer, size + 1, 0)) == -1) 
-   {
-      throw invalid_argument("send error");
-   }
-}
-
 void inputRead(int create_socket, char* buffer, int size)
 {
-   strcpy(buffer, username.c_str());
-   if ((send(create_socket, buffer, size + 1, 0)) == -1) 
-   {
-      throw invalid_argument("send error");
-   }
    cout << "Message number: ";
    strcpy(buffer,input(buffer, BUF));
    if ((send(create_socket, buffer, size + 1, 0)) == -1) 
@@ -378,11 +357,6 @@ void inputRead(int create_socket, char* buffer, int size)
 
 void inputDelete(int create_socket, char* buffer, int size)
 {
-   strcpy(buffer, username.c_str());
-   if ((send(create_socket, buffer, size + 1, 0)) == -1) 
-   {
-      throw invalid_argument("send error");
-   }
    cout << "Message number: ";
    strcpy(buffer,input(buffer, BUF));
    if ((send(create_socket, buffer, size + 1, 0)) == -1) 
