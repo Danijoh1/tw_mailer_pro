@@ -30,6 +30,7 @@ using namespace std::filesystem;
 int abortRequested = 0;
 int create_socket = -1;
 int new_socket = -1;
+string spoolDirectoryPath = "";
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -42,7 +43,7 @@ int main(int argc, char **argv)
 {
    socklen_t addrlen;
    struct sockaddr_in address, cliaddress;
-   string mainSpoolDirectory = "";
+   string spoolDirectory = "";
    int reuseValue = 1;
 
    ////////////////////////////////////////////////////////////////////////////
@@ -102,12 +103,25 @@ int main(int argc, char **argv)
    {
       cerr << "Server insufficently defined - Start Server at default port " << PORT << " with mail-spool-directory as spool directory" << endl;
       address.sin_port = htons(PORT);
-      mainSpoolDirectory = "mail-spool-directory";
+      spoolDirectory = "mail-spool-directory";
    }
    else
    {
       address.sin_port = htons(atoi(argv[1]));
-      mainSpoolDirectory = argv[2];
+      spoolDirectory = argv[2];
+   }
+
+   spoolDirectoryPath = "./" + spoolDirectory;
+   if (!exists(spoolDirectoryPath))
+   {
+      try
+      {
+      create_directory(spoolDirectoryPath);
+      }
+      catch (...)
+      {
+         cerr << "failed to create directory" << endl;
+      }
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -118,7 +132,7 @@ int main(int argc, char **argv)
       return EXIT_FAILURE;
    }
 
-   cout << "Started Server at port " << ntohs(address.sin_port) << " with " << mainSpoolDirectory << " as the spool directory" << endl;
+   cout << "Started Server at port " << ntohs(address.sin_port) << " with " << spoolDirectory << " as the spool directory" << endl;
 
    ////////////////////////////////////////////////////////////////////////////
    // ALLOW CONNECTION ESTABLISHING
@@ -140,9 +154,7 @@ int main(int argc, char **argv)
       // ACCEPTS CONNECTION SETUP
       // blocking, might have an accept-error on ctrl+c
       addrlen = sizeof(struct sockaddr_in);
-      if ((new_socket = accept(create_socket,
-                               (struct sockaddr *)&cliaddress,
-                               &addrlen)) == -1)
+      if ((new_socket = accept(create_socket, (struct sockaddr *)&cliaddress, &addrlen)) == -1)
       {
          if (abortRequested)
          {
@@ -288,7 +300,7 @@ void *clientCommunication(void *data)
                   cerr << except.what() << endl;
                }
                receiver = buffer;
-               directorypath = "./mail-spool-directory/" + user;
+               directorypath = spoolDirectoryPath + "/" + user;
                if (!exists(directorypath)) 
                { 
                   try
