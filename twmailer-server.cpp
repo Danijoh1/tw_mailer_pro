@@ -336,6 +336,7 @@ void listMessages(char* buffer,path directorypath,vector<string> index, int* cur
          messagecount++;
       }
       std::cout << messagecount << endl;
+      //We are sending the count of messages to the client
       if (send(*current_socket, to_string(messagecount).c_str(), 3, 0) == -1)
       {
          perror("send answer failed");
@@ -538,7 +539,7 @@ void *clientCommunication(void *data)
       char str[1024] = "";
       strcpy(str, buffer);
       int len =strlen(str);
-      for(int i = 0; i < len; i++)
+      for(int i = 0; i < len; i++)//all characters are converted to lowercase
       {
          str[i] = tolower(str[i]);
       }
@@ -549,7 +550,7 @@ void *clientCommunication(void *data)
          {
             if(isValid != 1)
             {
-               isValid = strcmp(str, commands[i]) == 0;
+               isValid = strcmp(str, commands[i]) == 0;     //determines which command is selected
                command = i;
             }
          }

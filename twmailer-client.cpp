@@ -121,11 +121,11 @@ int main(int argc, char **argv)
       int isValid = 0;
       int isAuthorised = 0;
       int command = -1;
-      if(username != "")
+      if(username != "")   //user is definied and that means authorized
       {
          cout << "Valid Commands: QUIT, SEND, LIST, READ, DEL" << endl;
       }
-      else
+      else                 //user is not logged in
       {
          cout << "Valid Commands: QUIT, LOGIN" << endl;
       }
@@ -406,8 +406,8 @@ char* receive(int create_socket, char* buffer, int size)
    else
    {
       buffer[size] = '\0';
-      if (strcmp("ERR", buffer) == 0)
-      {
+      if (strcmp("ERR", buffer) == 0)  //if the client gets an error returned from the server
+      {                                //it will disconnect from the server
          throw invalid_argument("<< Server error occured, abort");
       }
    }
@@ -425,7 +425,7 @@ void listReceive(int create_socket, char* buffer, int size)
       cout << "Subject " << i+1 <<": " << buffer << endl;
    }
 }
-void readReceive(int create_socket, char* buffer, int size)
+void readReceive(int create_socket, char* buffer, int size) //reads the message received from the server
 {
    strcpy(buffer, receive(create_socket, buffer, size));
    printf("<< %s\n", buffer); // ignore error
