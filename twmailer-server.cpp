@@ -332,7 +332,8 @@ void listMessages(char* buffer,path directorypath,vector<string> index,string us
       for(int i = 0; i != messagecount;i++)
       {
          std::cout << messages[i] << endl;
-         if (send(*current_socket, messages[i].c_str(), 3, 0) == -1)
+         strcpy(buffer,messages[i].c_str());
+         if (send(*current_socket,buffer, 3, 0) == -1)
    {
       perror("send answer failed");
    }
@@ -393,7 +394,8 @@ void readMessage(char* buffer,path directorypath,vector<string> index, int* curr
    while (getline (file, text)) 
    {
       std::cout << text << endl;
-      if (send(*current_socket, text.c_str(), 3, 0) == -1)
+      strcpy(buffer,text.c_str());
+      if (send(*current_socket,buffer, 3, 0) == -1)
       {
          perror("send answer failed");
       }
@@ -419,7 +421,7 @@ void deleteMessage(char* buffer, path directorypath,vector<string> index, int* c
       int temp = stoi(messageNumber);
       if(temp >= 0)
       {
-         messNum += temp;
+         messNum = temp;
       }
       else
       {
@@ -432,7 +434,7 @@ void deleteMessage(char* buffer, path directorypath,vector<string> index, int* c
    }
    try
    {
-      if(messNum > index.size())
+      if(messNum > index.size()-1)
       {
          throw(std::invalid_argument(" "));
       }
@@ -444,33 +446,22 @@ void deleteMessage(char* buffer, path directorypath,vector<string> index, int* c
          perror("send answer failed");
       }
    }
-   remove(directorypath/index[messNum]);
-   index[messNum] = "X";
+   string fileToRemove = index[messNum];
    vector<string> temp;
-   int j = 0;
-   for(long unsigned int i; i != index.size();i++)
+   for(long unsigned int i = 0; i != index.size()-1;i++)
    {
-      if(index[i] != "X")
+      if(i != messNum)
       {
-         if(i+j< index.size())
-         {
-         temp.push_back(index[i+j]);
-         }
-      }
-      else if(index[i] == "X")
-      {
-         if(i+1< index.size())
-         {
-            temp.push_back(index[i+1]);
-            j = 1;
-         } 
+         temp.push_back(index[i]);
       }
    }
    index.clear();
-   for(long unsigned int i; i != temp.size();i++)
+   index.resize(1);
+   for(long unsigned int i = 0; i != temp.size()-1;i++)
    {
       index.push_back(temp[i]);
    }
+   remove(directorypath/fileToRemove);
    if (send(*current_socket, "OK", 3, 0) == -1)
    {
       perror("send answer failed");
@@ -543,9 +534,10 @@ void *clientCommunication(void *data)
             }
             if(!empty(directorypath))
             {
-               for (auto const& dir_entry : std::filesystem::recursive_directory_iterator{directorypath})
+               for (auto const& dir_entry : std::filesystem::directory_iterator{directorypath})
                {
                   index.push_back(dir_entry.path().filename());
+                  cout << dir_entry.path().filename();
                }
             }
            if(command == 0)
